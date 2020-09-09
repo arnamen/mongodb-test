@@ -1,48 +1,30 @@
 const express = require('express');
-const User = require('./models/user');
-const Task = require('./models/task');
-require('./db/mongoose');
+require('./db/mongoose')
+const userRouter = require('./routers/user');
+const taskRouter = require('./routers/task');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(userRouter);
+app.use(taskRouter);
 
-app.post('/tasks', (req, res) => {
-
-    const task = new Task({
-        userName: 'testname',
-        description: 'some task dunno',
-    });
-    task.save()
-    .then((result) => {
-        res.send(result);
-    }).catch((err) => {
-        res.send(err);
-    });
-
+app.listen(port, () => {
+    console.log('Server is up on port ' + port);
 });
 
-app.get('/tasks/:id', (req, res) => {
-    Task.findById(req.params.id)
-    .then((result) => {
-        if(!result) return res.status(404).send();
-        console.log('here');
-        res.send(result);
-    }).catch((err) => {
-        console.log(err);
-        res.status(500).send();
-    });
-});
+const bcrypt = require('bcryptjs');
 
-app.get('/tasks', (req, res) => {
-    Task.find({completed: false})
-    .then((result) => {
-        if(!result) return res.status(404).send();
-        res.send(result);
-    }).catch((err) => {
-        res.status(500).send(err);
-    });
-});
+const myFunction = async () => {
+    const password = 'Red12345!';
+    const hashedPassword = await bcrypt.hash(password, 8);
 
-app.listen(port, () => console.log('server is up on port ' + port));
+    console.log(password);
+    console.log(hashedPassword);
+
+    const isMatch = await bcrypt.compare('red12345!', hashedPassword)
+    console.log(isMatch);
+}
+
+myFunction();

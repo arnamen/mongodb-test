@@ -1,18 +1,6 @@
-const mongoose = require('mongoose');
-const validator = require('validator');
+const mongoose = require('mongoose')
 
-const Task = mongoose.model('Tasks', {
-    userName: {
-        type: String,
-        required: true,
-        trim: true,
-        validate(value){
-            if(!validator.default.isLength(value,{
-                min: 0,
-                max: 15
-            })) throw new Error('Username length out of range (1~15)');
-        }
-    },
+const Task = mongoose.model('Task', {
     description: {
         type: String,
         required: true,
@@ -20,8 +8,8 @@ const Task = mongoose.model('Tasks', {
     },
     completed: {
         type: Boolean,
-        default: false,
+        default: false
     }
-});
+})
 
-module.exports = Task;
+module.exports = Task

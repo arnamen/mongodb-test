@@ -1,22 +1,43 @@
-const mongoose = require('mongoose');
-const validator = require('validator');
+const mongoose = require('mongoose')
+const validator = require('validator')
 
-const User = mongoose.model('users', {
+const User = mongoose.model('User', {
     name: {
         type: String,
         required: true,
+        trim: true
+    },
+    email: {
+        type: String,
+        required: true,
         trim: true,
-        validate(value){
-            if(!validator.default.isLength(value,{
-                min: 0,
-                max: 15
-            })) throw new Error('Username length out of range (1~15)');
+        lowercase: true,
+        validate(value) {
+            if (!validator.isEmail(value)) {
+                throw new Error('Email is invalid')
+            }
+        }
+    },
+    password: {
+        type: String,
+        required: true,
+        minlength: 7,
+        trim: true,
+        validate(value) {
+            if (value.toLowerCase().includes('password')) {
+                throw new Error('Password cannot contain "password"')
+            }
         }
     },
     age: {
         type: Number,
-        required: true,
-    },
-});
+        default: 0,
+        validate(value) {
+            if (value < 0) {
+                throw new Error('Age must be a postive number')
+            }
+        }
+    }
+})
 
-module.exports = User;
+module.exports = User
