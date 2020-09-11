@@ -52,7 +52,7 @@ const userSchema = new mongoose.Schema({
 
 userSchema.methods.generateAuthToken = async function () {
     const user = this;
-    const token = jwt.sign({id: user._id.toString()}, 'secret')
+    const token = jwt.sign({_id: user._id.toString()}, 'secret')
 
     user.tokens = user.tokens.concat({ token });
     await user.save();
@@ -60,18 +60,27 @@ userSchema.methods.generateAuthToken = async function () {
     return token;
 }
 
+userSchema.methods.toJSON = function ()  {
+    const user = this;
+    const userObj = user.toObject();
+
+    delete userObj.password;
+    delete userObj.tokens;
+
+    return userObj;
+}
+
+
 userSchema.statics.findByCredentials = async (email, password) => {
     try {
         const user = await User.findOne({email: email});
         if(!user) throw new Error("Couldn't find user with given credentials");
-
         const isMatch = await bcrypt.compare(password, user.password);
-
         if(!isMatch) throw new Error("Couldn't find user with given credentials");
         return user;
 
     } catch (error) {
-        res.status(400).send(error)
+        console.log('[findByCredentials] failed to find user')
     }
 }
 

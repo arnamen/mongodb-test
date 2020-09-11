@@ -1,4 +1,5 @@
 const express = require('express')
+const auth = require('../db/middleware/auth')
 const User = require('../models/user')
 const router = new express.Router()
 
@@ -14,19 +15,59 @@ router.post('/users', async (req, res) => {
 })
 
 router.post('/users/login', async (req, res) => {
+
+    const loginData = req.body;
+
     try {
-        const user = await User.findByCredentials(req.body.email, req.body.password);
+        const user = await User.findByCredentials(loginData.email, loginData.password)
+        if(!user) throw new Error();
         const token = await user.generateAuthToken();
-        res.send({ user, token });
-    } catch (e) {
-        res.status(400).send(e);
+        res.send({user, token: token});
+    } catch (error) {
+        res.status(404).send('user not found');
+    }
+    
+})
+
+router.get('/users/test', async (req, res) => {
+    try {
+        const user = await User.findOne({email: 'reg@example.com'});
+        res.send(user);   
+    } catch (error) {
+        console.log(error);
+        res.status(500).send();
     }
 })
 
-router.get('/users', async (req, res) => {
+router.post('/users/logout', auth, async (req, res) => {
     try {
-        const users = await User.find({})
-        res.send(users)
+        //удалить текущий токен
+        req.user.tokens = req.user.tokens.filter((tokenOjb) => { 
+            return tokenOjb.token !== req.token
+            }
+        );
+        await req.user.save();
+        res.send('LOGGED OUT: ' + req.token);
+    } catch (error) {
+        console.log(error)
+        res.status(500).send();
+    }
+})
+
+router.post('/users/logoutall', auth, async (req, res) => {
+    try {
+        req.user.tokens = [];
+        await req.user.save();
+        res.send('LOGGED OUT EVERYWHERE');
+    } catch (error) {
+        console.log(error)
+        res.status(500).send();
+    }
+})
+
+router.get('/users', auth, async (req, res) => {
+    try {
+        res.send({user: req.user, token: req.token})
     } catch (e) {
         res.status(500).send()
     }
@@ -42,7 +83,7 @@ router.get('/users/:id', async (req, res) => {
             return res.status(404).send()
         }
 
-        res.send(user)
+        res.send({user})
     } catch (e) {
         res.status(500).send()
     }
