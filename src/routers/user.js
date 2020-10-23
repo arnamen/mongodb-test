@@ -1,4 +1,6 @@
 const express = require('express')
+const multer = require('multer')
+const sharp = require('sharp')
 const auth = require('../db/middleware/auth')
 const User = require('../models/user')
 const router = new express.Router()
@@ -10,7 +12,8 @@ router.post('/users', async (req, res) => {
         await user.save()
         res.status(201).send({user, token})
     } catch (e) {
-        res.status(400).send(e)
+        console.log(e)
+        res.status(400).send()
     }
 })
 
@@ -73,23 +76,7 @@ router.get('/users', auth, async (req, res) => {
     }
 })
 
-router.get('/users/:id', async (req, res) => {
-    const _id = req.params.id
-
-    try {
-        const user = await User.findById(_id)
-
-        if (!user) {
-            return res.status(404).send()
-        }
-
-        res.send({user})
-    } catch (e) {
-        res.status(500).send()
-    }
-})
-
-router.patch('/users/:id', async (req, res) => {
+router.patch('/users/me', auth, async (req, res) => {
     const updates = Object.keys(req.body)
     const allowedUpdates = ['name', 'email', 'password', 'age']
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update))
@@ -100,35 +87,76 @@ router.patch('/users/:id', async (req, res) => {
 
     try {
 
-        const user = await User.findById(req.params.id);
+        updates.forEach((update) => req.user[update] = req.body[update]);
 
-        updates.forEach((update) => user[update] = req.body[update]);
+        await req.user.save();
 
-        await user.save();
-
-        //const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
-
-        if (!user) {
-            return res.status(404).send()
-        }
-
-        res.send(user)
+        res.send(req.user)
     } catch (e) {
+        console.log(e)
         res.status(400).send(e)
     }
 })
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/me', auth, async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id)
-
-        if (!user) {
-            return res.status(404).send()
-        }
-
-        res.send(user)
+        await req.user.remove();
+        res.send(req.user.name + ' ' + 'was deleted')
     } catch (e) {
         res.status(500).send()
+    }
+})
+
+const upload = multer({
+    limits: {
+        fileSize: 1000000,
+    },
+    fileFilter(req, file, cb) {
+        if(!file.originalname.match(/\.(jp(e)?g|png)$/)){
+            cb(new Error('must be an image'))
+        }
+        cb(undefined, true)
+    }
+})
+
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+
+    try {
+        const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer();
+        req.user.avatar = buffer;
+        await req.user.save();
+        res.send();
+    } catch (error) {
+        res.status(500).send()
+    }
+}, (error, req, res, next) => {
+    res.status(400).send(error.message)
+})
+
+router.delete('/users/me/avatar', auth, async (req, res) => {
+    try {
+        req.user.avatar = undefined;
+        await req.user.save();
+        res.send();
+    } catch (error) {
+        res.status(500).send()
+    }
+}, (error, req, res, next) => {
+    res.status(400).send(error.message)
+})
+
+router.get('/users/:id/avatar', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if(!user || !user.avatar){
+            throw new Error();
+        }
+
+        res.set('Content-Type', 'image/jpg');
+        res.send(user.avatar);
+    } catch (error) {
+        res.status(404).send();
     }
 })
 
